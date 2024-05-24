@@ -1,10 +1,10 @@
-# Hi, I'm Tangim Haque! 👋
+,# Hi, I'm Tangim Haque! 👋
 
-![Rivaan's github stats](https://github-readme-stats.vercel.app/api?username=imtangim&show_icons=true&theme=react)
+![Tangim's github stats](https://github-readme-stats.vercel.app/api?username=imtangim&show_icons=true&theme=react)
 
 ## 🚀 About Me
 
-I'm an 22 year old coding enthusiast with some knowledge in App and Web Development!
+I'm an 22 year old coding enthusiast with some knowledge in App and Web Development, also lead flutter developer at Sumash Tech (sumashtech.com)
 
 ## 🔗 Links
 
