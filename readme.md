@@ -1,4 +1,4 @@
-,# Hi, I'm Tangim Haque! 👋
+## Hi, I'm Tangim Haque! 👋
 
 ![Tangim's github stats](https://github-readme-stats.vercel.app/api?username=imtangim&show_icons=true&theme=react)
 
