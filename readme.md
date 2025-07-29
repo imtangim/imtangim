@@ -4,7 +4,7 @@
 
 ## 🚀 About Me
 
-I'm an 22 year old coding enthusiast with some knowledge in App and Web Development, also lead flutter developer at Sumash Tech (sumashtech.com)
+I'm an 22 year old coding enthusiast with some knowledge in Android and ios app, also ex-app developer at Sumash Tech (sumashtech.com)
 
 ## 🔗 Links
 
@@ -15,4 +15,4 @@ I'm an 22 year old coding enthusiast with some knowledge in App and Web Developm
 
 ## 🛠 Skills
 
-Flutter, Dart, Javascript, HTML, CSS, Firebase, Django
+Flutter, Dart, Javascript, HTML, CSS, Firebase
