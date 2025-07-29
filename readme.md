@@ -4,7 +4,7 @@
 
 ## 🚀 About Me
 
-I'm an 22 year old coding enthusiast with some knowledge in Android and ios app, also ex-app developer at Sumash Tech (sumashtech.com)
+I'm an 22 year old coding enthusiast with some knowledge in Android and ios app.
 
 ## 🔗 Links
 
