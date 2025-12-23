@@ -1,7 +1,5 @@
 ## Hi, I'm Tangim Haque! 👋
 
-![Tangim's github stats](https://github-readme-stats.vercel.app/api?username=imtangim&show_icons=true&theme=react)
-
 ## 🚀 About Me
 
 I'm an 22 year old coding enthusiast with some knowledge in Android and ios app.
