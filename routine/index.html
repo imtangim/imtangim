@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>University Timetable - Routine Maker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📅 University Timetable</h1>
+            <p class="subtitle">Spring 2026 Schedule</p>
+        </header>
+
+        <div class="timetable-container">
+            <div id="timetable" class="timetable"></div>
+        </div>
+
+        <div id="mobile-timetable" class="mobile-timetable"></div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Loading timetable...</p>
+        </div>
+    </div>
+
+    <!-- Floating PDF Button -->
+    <button id="pdfButton" class="floating-pdf-button" title="Export to PDF">
+        <span class="pdf-icon">📄</span>
+        <span class="pdf-text">PDF</span>
+    </button>
+
+    <!-- PDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+
