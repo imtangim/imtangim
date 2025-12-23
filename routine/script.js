@@ -761,6 +761,297 @@ function exportToPDF() {
     }
 }
 
+// Service Worker Registration
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+            .then((registration) => {
+                console.log('Service Worker registered:', registration);
+                // Update service worker if available
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log('New service worker available');
+                        }
+                    });
+                });
+            })
+            .catch((error) => {
+                console.log('Service Worker registration failed:', error);
+            });
+    });
+}
+
+// Notification Management
+let notificationPermission = null;
+let scheduledNotifications = [];
+
+// Request notification permission
+async function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        console.log('This browser does not support notifications');
+        return false;
+    }
+
+    if (Notification.permission === 'granted') {
+        notificationPermission = 'granted';
+        return true;
+    }
+
+    if (Notification.permission !== 'denied') {
+        const permission = await Notification.requestPermission();
+        notificationPermission = permission;
+        return permission === 'granted';
+    }
+
+    return false;
+}
+
+// Convert day name to day index (0 = Sunday, 6 = Saturday)
+function getDayIndex(dayName) {
+    const dayMap = {
+        'SUN': 0,
+        'MON': 1,
+        'TUE': 2,
+        'WED': 3,
+        'THU': 4,
+        'FRI': 5,
+        'SAT': 6
+    };
+    return dayMap[dayName] ?? -1;
+}
+
+// Get next occurrence of a day and time
+function getNextClassTime(dayIndex, timeString, notificationMinutesBefore = 10) {
+    const now = new Date();
+    const [startTime] = timeString.split(' - ');
+    const startMinutes = parseTime(startTime);
+    
+    // Calculate hours and minutes
+    const hours = Math.floor(startMinutes / 60);
+    const minutes = startMinutes % 60;
+    
+    // Create target date for this week
+    const target = new Date();
+    target.setHours(hours, minutes, 0, 0);
+    
+    // Subtract notification minutes
+    target.setMinutes(target.getMinutes() - notificationMinutesBefore);
+    
+    // Find next occurrence of the day
+    const currentDay = now.getDay();
+    let daysUntilTarget = dayIndex - currentDay;
+    
+    // If the day has passed this week, or it's today but time has passed
+    if (daysUntilTarget < 0 || (daysUntilTarget === 0 && target < now)) {
+        daysUntilTarget += 7; // Next week
+    }
+    
+    target.setDate(now.getDate() + daysUntilTarget);
+    
+    return target;
+}
+
+// Schedule a notification for a class
+function scheduleClassNotification(classItem) {
+    if (notificationPermission !== 'granted') {
+        return;
+    }
+
+    const dayIndex = getDayIndex(classItem.day);
+    if (dayIndex === -1) return;
+
+    const notificationTime = getNextClassTime(dayIndex, classItem.time, 10); // 10 minutes before
+    
+    // Only schedule if in the future
+    if (notificationTime <= new Date()) {
+        return;
+    }
+
+    const timeUntilNotification = notificationTime.getTime() - Date.now();
+    
+    // Use setTimeout for scheduling (for simplicity)
+    // In production, you might want to use a more robust scheduling system
+    const timeoutId = setTimeout(() => {
+        showClassNotification(classItem);
+        
+        // Schedule next week's notification
+        scheduleClassNotification(classItem);
+    }, timeUntilNotification);
+
+    scheduledNotifications.push({
+        timeoutId: timeoutId,
+        classItem: classItem,
+        scheduledTime: notificationTime
+    });
+
+    console.log(`Scheduled notification for ${classItem.courseId} on ${classItem.day} at ${notificationTime.toLocaleString()}`);
+}
+
+// Show notification for a class
+function showClassNotification(classItem) {
+    if (notificationPermission !== 'granted') {
+        return;
+    }
+
+    const teacherName = classItem.teacherCode ? getTeacherName(classItem.teacherCode) : 'TBA';
+    const notificationTitle = `Class Reminder: ${classItem.courseId}-${classItem.section}`;
+    const notificationBody = `${classItem.courseName}\nTime: ${classItem.time}\nRoom: ${classItem.room}\nTeacher: ${teacherName}`;
+
+    if ('serviceWorker' in navigator && 'showNotification' in ServiceWorkerRegistration.prototype) {
+        navigator.serviceWorker.ready.then((registration) => {
+            registration.showNotification(notificationTitle, {
+                body: notificationBody,
+                icon: './manifest.json',
+                badge: './manifest.json',
+                tag: `class-${classItem.courseId}-${classItem.day}-${Date.now()}`,
+                requireInteraction: false,
+                vibrate: [200, 100, 200],
+                data: {
+                    courseId: classItem.courseId,
+                    courseName: classItem.courseName,
+                    time: classItem.time,
+                    room: classItem.room
+                }
+            });
+        });
+    } else {
+        // Fallback to regular Notification API
+        new Notification(notificationTitle, {
+            body: notificationBody,
+            icon: './manifest.json',
+            tag: `class-${classItem.courseId}-${classItem.day}`
+        });
+    }
+}
+
+// Schedule all class notifications
+function scheduleAllNotifications() {
+    // Clear existing notifications
+    scheduledNotifications.forEach(notification => {
+        clearTimeout(notification.timeoutId);
+    });
+    scheduledNotifications = [];
+
+    // Schedule notifications for all classes
+    scheduleData.forEach(classItem => {
+        if (classItem.day !== 'FRI') { // Skip Friday (holiday)
+            scheduleClassNotification(classItem);
+        }
+    });
+
+    console.log(`Scheduled ${scheduledNotifications.length} notifications`);
+    
+    // Also send schedule data to service worker for background notifications
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then((registration) => {
+            registration.active.postMessage({
+                type: 'SCHEDULE_NOTIFICATIONS',
+                scheduleData: scheduleData
+            });
+        });
+    }
+}
+
+// Initialize notifications
+async function initializeNotifications() {
+    const hasPermission = await requestNotificationPermission();
+    
+    if (hasPermission) {
+        scheduleAllNotifications();
+        console.log('Notifications initialized and scheduled');
+    } else {
+        console.log('Notification permission not granted');
+    }
+}
+
+// Test notification function - schedules a notification 1 minute in the future
+async function scheduleTestNotification() {
+    const hasPermission = await requestNotificationPermission();
+    
+    if (!hasPermission) {
+        alert('Please allow notifications to test. Check your browser settings.');
+        return;
+    }
+
+    const testButton = document.getElementById('testNotificationButton');
+    if (testButton) {
+        testButton.disabled = true;
+        testButton.innerHTML = '<span class="test-icon">⏳</span><span class="test-text">1 min</span>';
+    }
+
+    const oneMinuteFromNow = new Date(Date.now() + 60 * 1000);
+    const timeString = oneMinuteFromNow.toLocaleTimeString();
+    
+    console.log(`Test notification scheduled for: ${timeString}`);
+    
+    // Send test notification request to service worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then((registration) => {
+            registration.active.postMessage({
+                type: 'SCHEDULE_TEST_NOTIFICATION',
+                scheduledTime: oneMinuteFromNow.getTime(),
+                timeString: timeString
+            });
+            
+            // Also schedule in main thread as backup
+            setTimeout(() => {
+                showTestNotification(timeString);
+                if (testButton) {
+                    testButton.disabled = false;
+                    testButton.innerHTML = '<span class="test-icon">🔔</span><span class="test-text">Test</span>';
+                }
+            }, 60 * 1000);
+        });
+    } else {
+        // Fallback if service worker not available
+        setTimeout(() => {
+            showTestNotification(timeString);
+            if (testButton) {
+                testButton.disabled = false;
+                testButton.innerHTML = '<span class="test-icon">🔔</span><span class="test-text">Test</span>';
+            }
+        }, 60 * 1000);
+    }
+    
+    alert(`Test notification scheduled! It will appear in 1 minute (at ${timeString}).\n\nYou can now close this page and the notification will still appear.`);
+}
+
+// Show test notification
+function showTestNotification(timeString) {
+    if (notificationPermission !== 'granted') {
+        return;
+    }
+
+    const notificationTitle = '🔔 Test Notification';
+    const notificationBody = `This is a test notification!\nScheduled time: ${timeString}\n\nIf you see this after closing the app, notifications are working correctly!`;
+
+    if ('serviceWorker' in navigator && 'showNotification' in ServiceWorkerRegistration.prototype) {
+        navigator.serviceWorker.ready.then((registration) => {
+            registration.showNotification(notificationTitle, {
+                body: notificationBody,
+                icon: './manifest.json',
+                badge: './manifest.json',
+                tag: `test-notification-${Date.now()}`,
+                requireInteraction: true,
+                vibrate: [200, 100, 200, 100, 200],
+                data: {
+                    type: 'test',
+                    timeString: timeString
+                }
+            });
+        });
+    } else {
+        // Fallback to regular Notification API
+        new Notification(notificationTitle, {
+            body: notificationBody,
+            icon: './manifest.json',
+            tag: `test-notification-${Date.now()}`
+        });
+    }
+}
+
 // Event listeners - Auto-fetch on page load
 document.addEventListener('DOMContentLoaded', () => {
     // Generate timetable first with existing data
@@ -774,6 +1065,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pdfButton) {
         pdfButton.addEventListener('click', exportToPDF);
     }
+    
+    // Add test notification button event listener
+    const testNotificationButton = document.getElementById('testNotificationButton');
+    if (testNotificationButton) {
+        testNotificationButton.addEventListener('click', scheduleTestNotification);
+    }
+    
+    // Initialize notifications after a short delay to ensure data is loaded
+    setTimeout(() => {
+        initializeNotifications();
+    }, 1000);
 });
 
 // Print styles
