@@ -903,9 +903,9 @@ function showClassNotification(classItem) {
         navigator.serviceWorker.ready.then((registration) => {
             registration.showNotification(notificationTitle, {
                 body: notificationBody,
-                icon: './manifest.json',
-                badge: './manifest.json',
-                tag: `class-${classItem.courseId}-${classItem.day}-${Date.now()}`,
+                icon: `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '')}/manifest.json`,
+                badge: `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '')}/manifest.json`,
+                tag: `class-${classItem.courseId}-${classItem.day}`,
                 requireInteraction: false,
                 vibrate: [200, 100, 200],
                 data: {
@@ -914,7 +914,7 @@ function showClassNotification(classItem) {
                     time: classItem.time,
                     room: classItem.room
                 }
-            });
+            }).catch(err => console.error('Notification error:', err));
         });
     } else {
         // Fallback to regular Notification API
@@ -966,92 +966,6 @@ async function initializeNotifications() {
     }
 }
 
-// Test notification function - schedules a notification 1 minute in the future
-async function scheduleTestNotification() {
-    const hasPermission = await requestNotificationPermission();
-    
-    if (!hasPermission) {
-        alert('Please allow notifications to test. Check your browser settings.');
-        return;
-    }
-
-    const testButton = document.getElementById('testNotificationButton');
-    if (testButton) {
-        testButton.disabled = true;
-        testButton.innerHTML = '<span class="test-icon">⏳</span><span class="test-text">1 min</span>';
-    }
-
-    const oneMinuteFromNow = new Date(Date.now() + 60 * 1000);
-    const timeString = oneMinuteFromNow.toLocaleTimeString();
-    
-    console.log(`Test notification scheduled for: ${timeString}`);
-    
-    // Send test notification request to service worker
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then((registration) => {
-            registration.active.postMessage({
-                type: 'SCHEDULE_TEST_NOTIFICATION',
-                scheduledTime: oneMinuteFromNow.getTime(),
-                timeString: timeString
-            });
-            
-            // Also schedule in main thread as backup
-            setTimeout(() => {
-                showTestNotification(timeString);
-                if (testButton) {
-                    testButton.disabled = false;
-                    testButton.innerHTML = '<span class="test-icon">🔔</span><span class="test-text">Test</span>';
-                }
-            }, 60 * 1000);
-        });
-    } else {
-        // Fallback if service worker not available
-        setTimeout(() => {
-            showTestNotification(timeString);
-            if (testButton) {
-                testButton.disabled = false;
-                testButton.innerHTML = '<span class="test-icon">🔔</span><span class="test-text">Test</span>';
-            }
-        }, 60 * 1000);
-    }
-    
-    alert(`Test notification scheduled! It will appear in 1 minute (at ${timeString}).\n\nYou can now close this page and the notification will still appear.`);
-}
-
-// Show test notification
-function showTestNotification(timeString) {
-    if (notificationPermission !== 'granted') {
-        return;
-    }
-
-    const notificationTitle = '🔔 Test Notification';
-    const notificationBody = `This is a test notification!\nScheduled time: ${timeString}\n\nIf you see this after closing the app, notifications are working correctly!`;
-
-    if ('serviceWorker' in navigator && 'showNotification' in ServiceWorkerRegistration.prototype) {
-        navigator.serviceWorker.ready.then((registration) => {
-            registration.showNotification(notificationTitle, {
-                body: notificationBody,
-                icon: './manifest.json',
-                badge: './manifest.json',
-                tag: `test-notification-${Date.now()}`,
-                requireInteraction: true,
-                vibrate: [200, 100, 200, 100, 200],
-                data: {
-                    type: 'test',
-                    timeString: timeString
-                }
-            });
-        });
-    } else {
-        // Fallback to regular Notification API
-        new Notification(notificationTitle, {
-            body: notificationBody,
-            icon: './manifest.json',
-            tag: `test-notification-${Date.now()}`
-        });
-    }
-}
-
 // Event listeners - Auto-fetch on page load
 document.addEventListener('DOMContentLoaded', () => {
     // Generate timetable first with existing data
@@ -1064,12 +978,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const pdfButton = document.getElementById('pdfButton');
     if (pdfButton) {
         pdfButton.addEventListener('click', exportToPDF);
-    }
-    
-    // Add test notification button event listener
-    const testNotificationButton = document.getElementById('testNotificationButton');
-    if (testNotificationButton) {
-        testNotificationButton.addEventListener('click', scheduleTestNotification);
     }
     
     // Initialize notifications after a short delay to ensure data is loaded

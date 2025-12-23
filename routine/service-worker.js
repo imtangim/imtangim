@@ -33,9 +33,6 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => {
-      // Check for pending test notifications
-      return checkPendingTestNotifications();
     })
   );
 });
@@ -67,7 +64,7 @@ self.addEventListener('notificationclick', (event) => {
         }
         // Otherwise open a new window
         if (clients.openWindow) {
-          return clients.openWindow('/routine/');
+          return clients.openWindow(`${self.location.origin}${BASE_PATH}/`);
         }
       })
   );
@@ -166,9 +163,9 @@ function showNotificationForClass(classItem) {
   
   return self.registration.showNotification(notificationTitle, {
     body: notificationBody,
-    icon: `${BASE_PATH}/manifest.json`,
-    badge: `${BASE_PATH}/manifest.json`,
-    tag: `class-${classItem.courseId}-${classItem.day}-${Date.now()}`,
+    icon: `${self.location.origin}${BASE_PATH}/manifest.json`,
+    badge: `${self.location.origin}${BASE_PATH}/manifest.json`,
+    tag: `class-${classItem.courseId}-${classItem.day}`,
     requireInteraction: false,
     vibrate: [200, 100, 200],
     data: {
@@ -177,7 +174,7 @@ function showNotificationForClass(classItem) {
       time: classItem.time,
       room: classItem.room
     }
-  });
+  }).catch(err => console.error('Service Worker notification error:', err));
 }
 
 // Message handler for receiving schedule data from main thread
@@ -188,11 +185,6 @@ self.addEventListener('message', (event) => {
     scheduleNotificationsFromServiceWorker(scheduleData);
   }
   
-  if (event.data && event.data.type === 'SCHEDULE_TEST_NOTIFICATION') {
-    const scheduledTime = event.data.scheduledTime;
-    const timeString = event.data.timeString;
-    scheduleTestNotificationInSW(scheduledTime, timeString);
-  }
 });
 
 // Store schedule data (simplified - using IndexedDB would be better)
@@ -208,94 +200,21 @@ async function storeScheduleData(scheduleData) {
 // Schedule notifications from service worker
 function scheduleNotificationsFromServiceWorker(scheduleData) {
   console.log('Received schedule data in service worker');
-  // Set up periodic checking (every 5 minutes)
-  setInterval(() => {
+  
+  // Store schedule data for periodic checks
+  storeScheduleData(scheduleData);
+  
+  // Set up periodic checking (every 1 minute for better reliability)
+  if (self.periodicCheckInterval) {
+    clearInterval(self.periodicCheckInterval);
+  }
+  
+  self.periodicCheckInterval = setInterval(() => {
     checkUpcomingClasses();
-  }, 5 * 60 * 1000);
+  }, 60 * 1000); // Check every minute
   
   // Also check immediately
   checkUpcomingClasses();
 }
 
-// Schedule test notification in service worker
-async function scheduleTestNotificationInSW(scheduledTime, timeString) {
-  const now = Date.now();
-  const delay = scheduledTime - now;
-  
-  if (delay > 0) {
-    console.log(`Service Worker: Test notification scheduled for ${new Date(scheduledTime).toLocaleString()}`);
-    
-    // Store test notification in cache for persistence
-    const cache = await caches.open(CACHE_NAME);
-    await cache.put(
-      new Request(`${BASE_PATH}/test-notification.json`),
-      new Response(JSON.stringify({ scheduledTime, timeString }))
-    );
-    
-    // Use setTimeout to schedule the notification (works while SW is active)
-    setTimeout(() => {
-      showTestNotificationInSW(timeString);
-    }, delay);
-    
-    // Also set up periodic check as backup (every 10 seconds)
-    const checkInterval = setInterval(() => {
-      const now = Date.now();
-      if (now >= scheduledTime) {
-        clearInterval(checkInterval);
-        showTestNotificationInSW(timeString);
-        // Remove from cache after showing
-        cache.delete(`${BASE_PATH}/test-notification.json`);
-      }
-    }, 10000);
-  } else {
-    console.log('Service Worker: Test notification time has already passed');
-  }
-}
-
-// Show test notification from service worker
-function showTestNotificationInSW(timeString) {
-  const notificationTitle = '🔔 Test Notification';
-  const notificationBody = `This is a test notification!\nScheduled time: ${timeString}\n\nIf you see this after closing the app, notifications are working correctly!`;
-  
-  return self.registration.showNotification(notificationTitle, {
-    body: notificationBody,
-    icon: './manifest.json',
-    badge: './manifest.json',
-    tag: `test-notification-${Date.now()}`,
-    requireInteraction: true,
-    vibrate: [200, 100, 200, 100, 200],
-    data: {
-      type: 'test',
-      timeString: timeString
-    }
-  });
-}
-
-// Check for pending test notifications on service worker activation
-async function checkPendingTestNotifications() {
-  try {
-    const cache = await caches.open(CACHE_NAME);
-    const response = await cache.match(`${BASE_PATH}/test-notification.json`);
-    
-    if (response) {
-      const data = await response.json();
-      const now = Date.now();
-      
-      if (now >= data.scheduledTime) {
-        // Time has passed, show notification immediately
-        showTestNotificationInSW(data.timeString);
-        await cache.delete(`${BASE_PATH}/test-notification.json`);
-      } else {
-        // Reschedule for remaining time
-        const remainingTime = data.scheduledTime - now;
-        setTimeout(() => {
-          showTestNotificationInSW(data.timeString);
-          cache.delete(`${BASE_PATH}/test-notification.json`);
-        }, remainingTime);
-      }
-    }
-  } catch (error) {
-    console.error('Error checking pending test notifications:', error);
-  }
-}
 

@@ -123,52 +123,6 @@ header h1 {
     font-size: 0.7em;
 }
 
-/* Floating Test Notification Button */
-.floating-test-button {
-    position: fixed;
-    bottom: 30px;
-    left: 30px;
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-    color: white;
-    border: none;
-    box-shadow: 0 8px 20px rgba(72, 187, 120, 0.4);
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    transition: all 0.3s ease;
-    font-size: 0.9em;
-    font-weight: 600;
-}
-
-.floating-test-button:hover {
-    transform: scale(1.1);
-    box-shadow: 0 12px 30px rgba(72, 187, 120, 0.6);
-}
-
-.floating-test-button:active {
-    transform: scale(0.95);
-}
-
-.floating-test-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.test-icon {
-    font-size: 1.5em;
-    margin-bottom: 2px;
-}
-
-.test-text {
-    font-size: 0.7em;
-}
-
 .timetable {
     width: 100%;
     min-width: 800px;
@@ -523,18 +477,6 @@ header h1 {
     .pdf-icon {
         font-size: 1.3em;
     }
-    
-    .floating-test-button {
-        bottom: 20px;
-        left: 20px;
-        width: 60px;
-        height: 60px;
-        font-size: 0.8em;
-    }
-
-    .test-icon {
-        font-size: 1.3em;
-    }
 }
 
 @media (max-width: 480px) {
@@ -566,13 +508,6 @@ header h1 {
     .floating-pdf-button {
         bottom: 15px;
         right: 15px;
-        width: 55px;
-        height: 55px;
-    }
-    
-    .floating-test-button {
-        bottom: 15px;
-        left: 15px;
         width: 55px;
         height: 55px;
     }
